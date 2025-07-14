@@ -1,0 +1,30 @@
+default_engine: ${DEFAULT_ENGINE:postgres}
+engines:
+  postgres:
+    enabled: true
+    datasource:
+      host: ${POSTGRES_DB_HOST:localhost}
+      port: ${POSTGRES_DB_PORT:5432}
+      name: ${POSTGRES_DB_NAME:db_name}
+      username: ${POSTGRES_DB_USER:db_username}
+      password: ${POSTGRES_DB_PASSWORD:pass123}
+
+  mysql:
+    enabled: true
+    datasource:
+      host: ${MYSQL_DB_HOST:localhost}
+      port: ${MYSQL_DB_PORT:3306}
+      name: ${MYSQL_DB_NAME:db_name}
+      username: ${MYSQL_DB_USER:db_pass}
+      password: ${MYSQL_DB_PASSWORD:pass123}
+
+  cassandra:
+    enabled: true
+    datasource:
+      auth: false
+      contactPoints: ${CASSANDRA_HOST:127.0.0.1}
+      port: ${CASSANDRA_PORT:9042}
+      datacenter: ${CASSANDRA_DC:datacenter1}
+      keyspace: ${CASSANDRA_KEYSPACE:twist_metadata}
+      username: ${CASSANDRA_USER:admin}
+      password: ${CASSANDRA_PASSWORD:admin}
