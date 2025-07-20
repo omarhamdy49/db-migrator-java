@@ -1,10 +1,33 @@
 plugins {
     id("application")
     java
+    `maven-publish`
 }
 
 group = "com.dwit.migrator"
-version = "1.0"
+version = "1.0.0"
+
+publishing {
+    publications {
+        create<MavenPublication>("mavenJava") {
+            artifact(tasks.getByName("jar")) {
+                builtBy(tasks.getByName("jar"))
+            }
+
+            groupId = "com.dwit.migrator"
+            artifactId = "db-migrator"
+            version = "1.0.0"
+        }
+    }
+
+    repositories {
+        maven {
+            name = "local"
+            url = uri("$buildDir/repo")
+        }
+    }
+}
+
 application {
     mainClass.set("com.dwit.migrator.MigrationApp")
 }

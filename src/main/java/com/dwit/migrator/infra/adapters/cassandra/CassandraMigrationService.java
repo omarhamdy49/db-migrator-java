@@ -94,7 +94,7 @@ public class CassandraMigrationService implements IMigrationService {
     private void ensureCassandraMigrationsTableExists(CqlSession session) {
         session.execute("""
                     CREATE TABLE IF NOT EXISTS migrations (
-                        tag text PRIMARY KEY,
+                        tag text,
                         name text,
                         applied_at timestamp,
                         status text
