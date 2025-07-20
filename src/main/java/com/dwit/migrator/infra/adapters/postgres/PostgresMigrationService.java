@@ -35,19 +35,35 @@ public class PostgresMigrationService implements IMigrationService {
             Files.list(migrationsDir).filter(f -> f.toString().endsWith(".sql")).forEach(file -> {
                 try {
                     MigrationFile mf = MigrationParser.parse(file);
-                    PreparedStatement ps = conn.prepareStatement("SELECT 1 FROM migrations WHERE tag = ? AND status = 'applied'");
-                    ps.setString(1, mf.tag);
+                    PreparedStatement ps = conn.prepareStatement("SELECT 1 FROM migrations WHERE name = ? AND status = 'applied'");
+                    ps.setString(1, mf.name);
                     ResultSet rs = ps.executeQuery();
                     if (!rs.next()) {
-                        conn.createStatement().execute(mf.upSql);
-                        PreparedStatement insert = conn.prepareStatement("INSERT INTO migrations (name, tag, status) VALUES (?, ?, 'applied')");
-                        insert.setString(1, mf.name);
-                        insert.setString(2, mf.tag);
-                        insert.execute();
-                        System.out.println("✅ Applied: " + mf.name);
+                        try {
+                            conn.createStatement().execute(mf.upSql);
+                            PreparedStatement insert = conn.prepareStatement("INSERT INTO migrations (name, tag, status) VALUES (?, ?, 'applied')");
+                            insert.setString(1, mf.name);
+                            insert.setString(2, mf.tag);
+                            insert.execute();
+                            System.out.println("✅ Applied: " + mf.name);
+                        } catch (Exception sqlEx) {
+                            System.err.println("\n❌ Migration failed!");
+                            System.err.println("File: " + file.getFileName());
+                            System.err.println("Migration name: " + mf.name);
+                            System.err.println("--- SQL ---\n" + mf.upSql + "\n---");
+                            if (sqlEx instanceof SQLException) {
+                                SQLException sex = (SQLException) sqlEx;
+                                System.err.println("SQL Error: " + sex.getMessage());
+                                System.err.println("SQL State: " + sex.getSQLState());
+                                System.err.println("Error Code: " + sex.getErrorCode());
+                            } else {
+                                System.err.println("Error: " + sqlEx.getMessage());
+                            }
+                            throw new RuntimeException("PostgreSQL migration failed for file: " + file.getFileName(), sqlEx);
+                        }
                     }
                 } catch (Exception e) {
-                    throw new RuntimeException("PostgreSQL migration failed", e);
+                    throw new RuntimeException("PostgreSQL migration failed during migration file processing: " + file.getFileName(), e);
                 }
             });
         }
@@ -84,7 +100,7 @@ public class PostgresMigrationService implements IMigrationService {
 
     private void ensureMigrationsTableExists(Connection conn) throws SQLException {
         try (Statement stmt = conn.createStatement()) {
-            stmt.execute("CREATE TABLE IF NOT EXISTS migrations (tag VARCHAR(32) PRIMARY KEY, name VARCHAR(255), applied_at TIMESTAMP, status VARCHAR(20));");
+            stmt.execute("CREATE TABLE IF NOT EXISTS migrations (tag VARCHAR(32) , name VARCHAR(255), applied_at TIMESTAMP DEFAULT NOW(), status VARCHAR(20));");
         }
     }
 }

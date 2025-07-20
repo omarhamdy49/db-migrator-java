@@ -85,7 +85,7 @@ public class MySQLMigrationService implements IMigrationService {
 
     private void ensureMigrationsTableExists(Connection conn) throws SQLException {
         try (Statement stmt = conn.createStatement()) {
-            stmt.execute("CREATE TABLE IF NOT EXISTS migrations (tag VARCHAR(32) PRIMARY KEY, name VARCHAR(255), applied_at TIMESTAMP, status VARCHAR(20));");
+            stmt.execute("CREATE TABLE IF NOT EXISTS migrations (tag VARCHAR(32) , name VARCHAR(255), applied_at TIMESTAMP DEFAULT NOW(), status VARCHAR(20));");
         }
     }
 }
