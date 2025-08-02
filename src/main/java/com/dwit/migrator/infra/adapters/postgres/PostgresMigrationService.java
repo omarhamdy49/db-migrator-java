@@ -58,19 +58,18 @@ public class PostgresMigrationService implements IMigrationService {
                             System.err.println("File: " + file.getFileName());
                             System.err.println("Migration name: " + mf.name);
                             System.err.println("--- SQL ---\n" + mf.upSql + "\n---");
-                            if (sqlEx instanceof SQLException) {
-                                SQLException sex = (SQLException) sqlEx;
-                                System.err.println("SQL Error: " + sex.getMessage());
-                                System.err.println("SQL State: " + sex.getSQLState());
-                                System.err.println("Error Code: " + sex.getErrorCode());
+                            if (sqlEx instanceof SQLException ex) {
+                                System.err.println("SQL Error: " + ex.getMessage());
+                                System.err.println("SQL State: " + ex.getSQLState());
+                                System.err.println("Error Code: " + ex.getErrorCode());
                             } else {
                                 System.err.println("Error: " + sqlEx.getMessage());
                             }
-                            throw new RuntimeException("PostgreSQL migration failed for file: " + file.getFileName(), sqlEx);
+                            throw new RuntimeException("PostgresSQL migration failed for file: " + file.getFileName(), sqlEx);
                         }
                     }
                 } catch (Exception e) {
-                    throw new RuntimeException("PostgreSQL migration failed during migration file processing: " + file.getFileName(), e);
+                    throw new RuntimeException("PostgresSQL migration failed during migration file processing: " + file.getFileName(), e);
                 }
             });
         }
