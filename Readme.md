@@ -64,10 +64,18 @@ engines:
 ---
 
 ## 🚀 Usage
+### Run Make Commands
+
+```bash
+make check ENGINE={postgres,mysql,cassandra}
+make migrate ENGINE={postgres,mysql,cassandra}
+make rollback TAG={tag-name,ex:v1.2.3} ENGINE={postgres,mysql,cassandra}
+make new NAME=`{create_users_table}` ENGINE={postgres,mysql,cassandra}
+```
+
 ### Run From Gradle
 
 ```bash
-
 ./gradlew run --args="check --engine={db-engine:postgres,mysql,cassandra} "
 ./gradlew run --args="migrate --engine={db-engine:postgres,mysql,cassandra} "
 ./gradlew run --args="rollback-tag --tag=<tag> --engine={db-engine:postgres,mysql,cassandra} "
