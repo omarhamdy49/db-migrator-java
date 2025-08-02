@@ -10,6 +10,8 @@ import org.slf4j.Logger;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.*;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Objects;
 
 public class PostgresMigrationService implements IMigrationService {
@@ -18,7 +20,7 @@ public class PostgresMigrationService implements IMigrationService {
     private final String ENGINE_NAME = "postgres";
 
     public PostgresMigrationService() {
-        this.migrationsDir =Objects.requireNonNull(AppConfig.migrationsDir(ENGINE_NAME));
+        this.migrationsDir = Objects.requireNonNull(AppConfig.migrationsDir(ENGINE_NAME));
     }
 
     @Override
@@ -32,7 +34,12 @@ public class PostgresMigrationService implements IMigrationService {
 
     public void migrateAll() throws Exception {
         try (Connection conn = PostgresDBContext.getConnection()) {
-            Files.list(migrationsDir).filter(f -> f.toString().endsWith(".sql")).forEach(file -> {
+            List<Path> sortedSqlFiles = Files.list(migrationsDir)
+                    .filter(f -> f.toString().endsWith(".sql"))
+                    .sorted(Comparator.comparing(Path::toString)) // sort in ascending order
+                    .toList();
+            sortedSqlFiles.forEach(file -> {
+
                 try {
                     MigrationFile mf = MigrationParser.parse(file);
                     PreparedStatement ps = conn.prepareStatement("SELECT 1 FROM migrations WHERE name = ? AND status = 'applied'");
