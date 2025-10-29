@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
+import java.util.UUID;
 
 public class CassandraMigrationService implements IMigrationService {
     private static final Logger log = LoggerUtil.getLogger(CassandraMigrationService.class);
@@ -40,7 +41,7 @@ public class CassandraMigrationService implements IMigrationService {
                     var res = session.execute("SELECT tag FROM migrations WHERE tag = ? AND status = 'applied' ALLOW FILTERING", mf.tag);
                     if (res.one() == null) {
                         for (String q : mf.upSqlList) session.execute(q);
-                        session.execute("INSERT INTO migrations (tag, name, status) VALUES (?, ?, 'applied')", mf.tag, mf.name);
+                        session.execute("INSERT INTO migrations (id,tag, name, status) VALUES (?,?, ?, 'applied')", UUID.randomUUID(), mf.tag, mf.name);
                         System.out.println("✅ Applied: " + mf.name);
                     }
                 } catch (Exception e) {
@@ -94,6 +95,7 @@ public class CassandraMigrationService implements IMigrationService {
     private void ensureCassandraMigrationsTableExists(CqlSession session) {
         session.execute("""
                     CREATE TABLE IF NOT EXISTS migrations (
+                        id UUID PRIMARY KEY,
                         tag text,
                         name text,
                         applied_at timestamp,
