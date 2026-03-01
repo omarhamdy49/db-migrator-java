@@ -27,7 +27,7 @@ public class MigrationApp {
         String tag = flags.get("tag");
         String file = flags.get("file");
 
-        log.info("Command: " + cmd + ", Engine: " + engine);
+        log.info("Command: {}, Engine: {}", cmd, engine);
 
         switch (cmd) {
             case "check" -> runner.checkConnection(engine);

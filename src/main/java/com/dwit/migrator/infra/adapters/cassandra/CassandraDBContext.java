@@ -30,14 +30,15 @@ public class CassandraDBContext {
         String host = FileUtil.resolveEnv(ds.get("contactPoints").toString());
         int port = Integer.parseInt(FileUtil.resolveEnv(ds.get("port").toString()));
         String datacenter = FileUtil.resolveEnv(ds.get("datacenter").toString());
-//            String keyspace = resolveEnv(ds.get("keyspace").toString());
-        String username = FileUtil.resolveEnv(ds.get("username").toString());
-        String password = FileUtil.resolveEnv(ds.get("password").toString());
-        return CqlSession.builder()
+        String username = ds.get("username") != null ? FileUtil.resolveEnv(ds.get("username").toString()) : "";
+        String password = ds.get("password") != null ? FileUtil.resolveEnv(ds.get("password").toString()) : "";
+        CqlSessionBuilder builder = CqlSession.builder()
                 .addContactPoint(new InetSocketAddress(host, port))
-                .withLocalDatacenter(datacenter)
-                .withAuthCredentials(username, password);
-//                    .withKeyspace(CqlIdentifier.fromCql(keyspace))
+                .withLocalDatacenter(datacenter);
+        if (!username.isEmpty()) {
+            builder.withAuthCredentials(username, password);
+        }
+        return builder;
     }
 
     public static Map<String, Object> cassandraConfig() {

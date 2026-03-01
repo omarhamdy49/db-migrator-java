@@ -10,6 +10,8 @@ import org.slf4j.Logger;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -19,33 +21,48 @@ public class CassandraMigrationService implements IMigrationService {
     private final String ENGINE_NAME = "cassandra";
 
     public CassandraMigrationService() {
-        this.migrationsDir =Objects.requireNonNull(AppConfig.migrationsDir(ENGINE_NAME));
+        this.migrationsDir = Objects.requireNonNull(AppConfig.migrationsDir(ENGINE_NAME));
     }
 
     @Override
     public void checkConnection() throws Exception {
         try (CqlSession session = CassandraDBContext.getCassandraSession()) {
-            //create keyspace if not exists
             ensureKeyspaceExists(session);
-            //create migration table if not exists
             ensureCassandraMigrationsTableExists(session);
             log.info("✅ Connection OK to: {}", ENGINE_NAME);
         }
     }
 
     public void migrateAll() throws Exception {
+        // Ensure keyspace and migrations table exist before running migrations
+        try (CqlSession initSession = CassandraDBContext.getCassandraSession()) {
+            ensureKeyspaceExists(initSession);
+            ensureCassandraMigrationsTableExists(initSession);
+        }
+
         try (CqlSession session = CassandraDBContext.cqlKeySpaceSession()) {
-            Files.list(migrationsDir).filter(f -> f.toString().endsWith(".cql")).forEach(file -> {
+            List<Path> sortedCqlFiles = Files.list(migrationsDir)
+                    .filter(f -> f.toString().endsWith(".cql"))
+                    .sorted(Comparator.comparing(Path::toString))
+                    .toList();
+
+            sortedCqlFiles.forEach(file -> {
                 try {
                     MigrationFile mf = MigrationParser.parse(file);
                     var res = session.execute("SELECT tag FROM migrations WHERE tag = ? AND status = 'applied' ALLOW FILTERING", mf.tag);
                     if (res.one() == null) {
-                        for (String q : mf.upSqlList) session.execute(q);
-                        session.execute("INSERT INTO migrations (id,tag, name, status) VALUES (?,?, ?, 'applied')", UUID.randomUUID(), mf.tag, mf.name);
+                        for (String q : mf.upSqlList) {
+                            session.execute(q);
+                        }
+                        session.execute("INSERT INTO migrations (id, tag, name, status) VALUES (?, ?, ?, 'applied')",
+                                UUID.randomUUID(), mf.tag, mf.name);
                         System.out.println("✅ Applied: " + mf.name);
                     }
                 } catch (Exception e) {
-                    throw new RuntimeException("Cassandra migration failed", e);
+                    System.err.println("\n❌ Cassandra migration failed!");
+                    System.err.println("File: " + file.getFileName());
+                    System.err.println("Error: " + e.getMessage());
+                    throw new RuntimeException("Cassandra migration failed for file: " + file.getFileName(), e);
                 }
             });
         }

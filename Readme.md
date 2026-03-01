@@ -188,7 +188,7 @@ DROP TABLE IF EXISTS users;
 Outputs to:
 
 ```
-build/libs/eand-migrator.jar
+build/libs/db-migrator.jar
 ```
 
 You can rename and distribute this CLI JAR tool.

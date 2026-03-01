@@ -3,6 +3,9 @@ package com.dwit.migrator.infra.util;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Map;
 import java.util.Objects;
 
@@ -10,6 +13,35 @@ public class FileUtil {
 
     public static Map<String, Object> loadPropertiesYaml() throws Exception {
         Yaml yaml = new Yaml();
+
+        // Check for external migrator-config.yml first (for twist-hub-be project)
+        Path migratorConfig = Paths.get("src/main/resources/migrator-config.yml");
+        if (Files.exists(migratorConfig)) {
+            try (InputStream input = Files.newInputStream(migratorConfig)) {
+                return yaml.load(input);
+            }
+        }
+
+        // Check for APP_CONFIG_PATH environment variable
+        String externalPath = System.getenv("APP_CONFIG_PATH");
+        if (externalPath != null) {
+            Path configPath = Paths.get(externalPath);
+            if (Files.exists(configPath)) {
+                try (InputStream input = Files.newInputStream(configPath)) {
+                    return yaml.load(input);
+                }
+            }
+        }
+
+        // Fallback to config/application.yml in current directory
+        Path configDir = Paths.get("config/application.yml");
+        if (Files.exists(configDir)) {
+            try (InputStream input = Files.newInputStream(configDir)) {
+                return yaml.load(input);
+            }
+        }
+
+        // Finally, try classpath resource
         try (InputStream input = FileUtil.class.getClassLoader().getResourceAsStream("application.yml")) {
             return yaml.load(input);
         }

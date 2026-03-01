@@ -16,15 +16,20 @@ public class MigrationParser {
         String[] parts = content.split("-- down", 2);
         String[] upParts = parts[0].split("-- up", 2);
 
-        String up = upParts.length > 1 ? upParts[1].trim() : "";
-        String down = parts.length > 1 ? parts[1].trim() : "";
+        String upRaw = upParts.length > 1 ? upParts[1].trim() : "";
+        String downRaw = parts.length > 1 ? parts[1].trim() : "";
 
-        List<String> upList = Arrays.stream(up.split(";"))
+        // Strip single-line comments before splitting on semicolons
+        // to prevent comments containing semicolons from breaking statement parsing
+        String upClean = stripLineComments(upRaw);
+        String downClean = stripLineComments(downRaw);
+
+        List<String> upList = Arrays.stream(upClean.split(";"))
                 .map(String::trim).filter(s -> !s.isEmpty()).toList();
-        List<String> downList = Arrays.stream(down.split(";"))
+        List<String> downList = Arrays.stream(downClean.split(";"))
                 .map(String::trim).filter(s -> !s.isEmpty()).toList();
 
-        return new MigrationFile(path.getFileName().toString(), tag, up, down, upList, downList);
+        return new MigrationFile(path.getFileName().toString(), tag, upRaw, downRaw, upList, downList);
     }
 
     private static String extractTag(String content) {
@@ -33,5 +38,17 @@ public class MigrationParser {
                 .findFirst()
                 .map(line -> line.replace("-- tag:", "").trim())
                 .orElseThrow(() -> new RuntimeException("Missing tag in migration"));
+    }
+
+    /**
+     * Strip single-line SQL/CQL comments (lines starting with --)
+     * before splitting on semicolons. This prevents comments containing
+     * semicolons from breaking statement parsing.
+     */
+    private static String stripLineComments(String sql) {
+        return Arrays.stream(sql.split("\n"))
+                .filter(line -> !line.trim().startsWith("--"))
+                .reduce("", (a, b) -> a + "\n" + b)
+                .trim();
     }
 }

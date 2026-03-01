@@ -18,9 +18,7 @@ public class MysqlDBContext {
             String user = FileUtil.resolveEnv(ds.get("username").toString());
             String pass = FileUtil.resolveEnv(ds.get("password").toString());
 
-            String url;
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            url = "jdbc:mysql://" + host + ":" + port + "/" + name + "?useSSL=false&allowPublicKeyRetrieval=true";
+            String url = "jdbc:mysql://" + host + ":" + port + "/" + name + "?useSSL=false&allowPublicKeyRetrieval=true";
             return DriverManager.getConnection(url, user, pass);
         } catch (Exception e) {
             throw new RuntimeException("❌ Mysql DB Connection failed: " + e.getMessage(), e);

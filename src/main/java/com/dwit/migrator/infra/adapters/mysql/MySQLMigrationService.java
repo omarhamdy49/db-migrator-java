@@ -4,13 +4,14 @@ import com.dwit.migrator.config.AppConfig;
 import com.dwit.migrator.domain.IMigrationService;
 import com.dwit.migrator.domain.MigrationFile;
 import com.dwit.migrator.infra.MigrationParser;
-import com.dwit.migrator.infra.adapters.postgres.PostgresDBContext;
 import com.dwit.migrator.infra.util.LoggerUtil;
 import org.slf4j.Logger;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.*;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Objects;
 
 public class MySQLMigrationService implements IMigrationService {
@@ -24,8 +25,7 @@ public class MySQLMigrationService implements IMigrationService {
 
     @Override
     public void checkConnection() throws Exception {
-        try (Connection conn = PostgresDBContext.getConnection()) {
-            //create migration table if not exists
+        try (Connection conn = MysqlDBContext.getConnection()) {
             ensureMigrationsTableExists(conn);
             log.info("✅ Connection OK to {}", ENGINE_NAME);
         }
@@ -33,7 +33,14 @@ public class MySQLMigrationService implements IMigrationService {
 
     public void migrateAll() throws Exception {
         try (Connection conn = MysqlDBContext.getConnection()) {
-            Files.list(migrationsDir).filter(f -> f.toString().endsWith(".sql")).forEach(file -> {
+            ensureMigrationsTableExists(conn);
+
+            List<Path> sortedSqlFiles = Files.list(migrationsDir)
+                    .filter(f -> f.toString().endsWith(".sql"))
+                    .sorted(Comparator.comparing(Path::toString))
+                    .toList();
+
+            sortedSqlFiles.forEach(file -> {
                 try {
                     MigrationFile mf = MigrationParser.parse(file);
                     PreparedStatement ps = conn.prepareStatement("SELECT 1 FROM migrations WHERE tag = ? AND status = 'applied'");
@@ -48,7 +55,10 @@ public class MySQLMigrationService implements IMigrationService {
                         System.out.println("✅ Applied: " + mf.name);
                     }
                 } catch (Exception e) {
-                    throw new RuntimeException("MySQL migration failed", e);
+                    System.err.println("\n❌ MySQL migration failed!");
+                    System.err.println("File: " + file.getFileName());
+                    System.err.println("Error: " + e.getMessage());
+                    throw new RuntimeException("MySQL migration failed for file: " + file.getFileName(), e);
                 }
             });
         }

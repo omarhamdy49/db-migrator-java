@@ -8,7 +8,6 @@ import org.yaml.snakeyaml.Yaml;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -25,6 +24,12 @@ public class AppConfig {
     }
 
     public static Path migrationsDir(String engine) {
+        // Check for custom migrations path from environment variable
+        String customPath = System.getenv("MIGRATIONS_PATH");
+        if (customPath != null) {
+            return Paths.get(customPath, engine);
+        }
+
         boolean runningFromJar = Objects.requireNonNull(AppConfig.class.getResource("")).toString().startsWith("jar:");
 
         if (runningFromJar) {
@@ -38,7 +43,10 @@ public class AppConfig {
 
     public static String getEnvOrDefault(String key, String defaultValue) {
         return Optional.ofNullable(System.getenv(key.toUpperCase()))
-                .or(() -> Optional.ofNullable((String) yaml.get(key)))
+                .or(() -> {
+                    Object val = yaml.get(key);
+                    return val != null ? Optional.of(val.toString()) : Optional.empty();
+                })
                 .orElse(defaultValue);
     }
 

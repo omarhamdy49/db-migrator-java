@@ -4,6 +4,8 @@ import com.dwit.migrator.config.AppConfig;
 import com.dwit.migrator.domain.IMigrationService;
 import com.dwit.migrator.domain.MigrationFile;
 import com.dwit.migrator.infra.MigrationParser;
+import com.dwit.migrator.infra.util.DBUtil;
+import com.dwit.migrator.infra.util.FileUtil;
 import com.dwit.migrator.infra.util.LoggerUtil;
 import org.slf4j.Logger;
 
@@ -12,6 +14,7 @@ import java.nio.file.Path;
 import java.sql.*;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 public class PostgresMigrationService implements IMigrationService {
@@ -26,7 +29,9 @@ public class PostgresMigrationService implements IMigrationService {
     @Override
     public void checkConnection() throws Exception {
         try (Connection conn = PostgresDBContext.getConnection()) {
-            //create migration table if not exists
+            // Create schema if not exists
+            ensureSchemaExists(conn);
+            // Create migration table if not exists
             ensureMigrationsTableExists(conn);
             log.info("✅ Connection OK to {}", ENGINE_NAME);
         }
@@ -34,6 +39,11 @@ public class PostgresMigrationService implements IMigrationService {
 
     public void migrateAll() throws Exception {
         try (Connection conn = PostgresDBContext.getConnection()) {
+            // Ensure schema exists before running migrations
+            ensureSchemaExists(conn);
+            // Ensure migrations table exists
+            ensureMigrationsTableExists(conn);
+
             List<Path> sortedSqlFiles = Files.list(migrationsDir)
                     .filter(f -> f.toString().endsWith(".sql"))
                     .sorted(Comparator.comparing(Path::toString)) // sort in ascending order
@@ -107,6 +117,33 @@ public class PostgresMigrationService implements IMigrationService {
     private void ensureMigrationsTableExists(Connection conn) throws SQLException {
         try (Statement stmt = conn.createStatement()) {
             stmt.execute("CREATE TABLE IF NOT EXISTS migrations (tag VARCHAR(32) , name VARCHAR(255), applied_at TIMESTAMP DEFAULT NOW(), status VARCHAR(20));");
+        }
+    }
+
+    private void ensureSchemaExists(Connection conn) throws SQLException {
+        try {
+            Map<String, Object> ds = DBUtil.DBConfig("postgres");
+            Object schemaObj = ds.get("schema");
+            if (schemaObj == null) {
+                return; // No schema configured, use default (public)
+            }
+
+            String schema = FileUtil.resolveEnv(schemaObj.toString());
+            if (schema == null || schema.isEmpty() || schema.equals("public")) {
+                return; // Schema is public, no need to create
+            }
+
+            log.info("Ensuring schema '{}' exists...", schema);
+            try (Statement stmt = conn.createStatement()) {
+                // Create schema if not exists
+                stmt.execute("CREATE SCHEMA IF NOT EXISTS " + schema);
+                // Create uuid-ossp extension in public schema (available globally)
+                stmt.execute("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\" SCHEMA public");
+            }
+            log.info("✅ Schema '{}' is ready", schema);
+        } catch (Exception e) {
+            log.warn("Could not ensure schema exists: {}", e.getMessage());
+            // Don't throw - let the migration continue, it might still work
         }
     }
 }

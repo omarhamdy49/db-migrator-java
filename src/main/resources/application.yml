@@ -21,10 +21,9 @@ engines:
   cassandra:
     enabled: true
     datasource:
-      auth: false
       contactPoints: ${CASSANDRA_HOST:127.0.0.1}
       port: ${CASSANDRA_PORT:9042}
-      datacenter: ${CASSANDRA_DC:datacenter1}
-      keyspace: ${CASSANDRA_KEYSPACE:twist_metadata}
-      username: ${CASSANDRA_USER:admin}
-      password: ${CASSANDRA_PASSWORD:admin}
+      datacenter: ${CASSANDRA_DC:dc1}
+      keyspace: ${CASSANDRA_KEYSPACE:twist_tv}
+      username: ${CASSANDRA_USER:}
+      password: ${CASSANDRA_PASSWORD:}
